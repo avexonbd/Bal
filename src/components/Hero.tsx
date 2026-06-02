@@ -182,7 +182,7 @@ export default function Hero({ onNavigate }: HeroProps) {
                   }}
                   className="text-transparent bg-clip-text font-black border-b-2 border-purple-500/30 pb-0.5 inline-block filter drop-shadow-[0_1px_4px_rgba(192,132,252,0.3)] select-none"
                 >
-                  디자인 ও ডেভেলপমেন্ট
+                  ডিজাইন ও ডেভেলপমেন্ট
                 </motion.span>{" "}
               </motion.h2>
 

@@ -46,76 +46,53 @@ export default function PromoPopup() {
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-        {/* Backdrop overlay */}
+        {/* Backdrop overlay with luxury glass blur */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleClose}
-          className="absolute inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
+          className="absolute inset-0 bg-black/85 backdrop-blur-md cursor-pointer"
         />
 
-        {/* Modal body */}
+        {/* Modal body - Sleek, smaller form factor, pristine quality preservation, and animated neon border glow */}
         <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          initial={{ scale: 0.85, opacity: 0, y: 15 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 15 }}
-          transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          className="relative bg-[#130E26]/95 border border-purple-500/30 rounded-2xl overflow-hidden w-full max-w-lg shadow-[0_0_50px_rgba(147,51,234,0.25)] flex flex-col z-10"
+          exit={{ scale: 0.85, opacity: 0, y: 15 }}
+          transition={{ type: "spring", damping: 22, stiffness: 320 }}
+          className="relative rounded-2xl p-[2px] overflow-hidden w-full max-w-[330px] sm:max-w-[360px] shadow-[0_0_40px_rgba(147,51,234,0.55)] flex flex-col z-10 transition-all hover:shadow-[0_0_55px_rgba(147,51,234,0.8)] group"
         >
-          {/* Close trigger top-right icon */}
+          {/* Seamless Neon Rotating Outline Spinner */}
+          <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
+            <div className="absolute top-1/2 left-1/2 w-[350%] h-[350%] bg-[conic-gradient(from_0deg,transparent_15%,#c084fc_35%,#f472b6_50%,#3b82f6_65%,transparent_85%)] animate-[neon-border-spin_4.5s_linear_infinite]" />
+          </div>
+
+          {/* Floating minimal X close trigger */}
           <button
             onClick={handleClose}
-            className="absolute top-3 right-3 z-20 bg-black/40 hover:bg-black/70 text-slate-100 hover:text-red-400 p-2 rounded-full transition-colors duration-200 border border-white/10"
+            className="absolute top-2 right-2 z-30 bg-black/60 hover:bg-red-500 hover:text-white text-slate-200 p-1.5 rounded-full transition-all duration-300 border border-white/10 hover:scale-105 active:scale-95 shadow-lg"
             aria-label="Close promotion modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-3.5 h-3.5" />
           </button>
 
-          {/* Picture frame section */}
+          {/* Picture frame completely maintaining original image quality & natural aspect ratio */}
           <div 
             onClick={handleActionClick}
-            className="relative cursor-pointer overflow-hidden group aspect-[3/2] flex items-center justify-center bg-[#07040E]"
+            className="relative cursor-pointer overflow-hidden rounded-[14px] bg-[#020003] z-10 w-full h-auto flex flex-col items-center justify-center transition-all"
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-[#130E26] via-transparent to-black/30 z-10 opacity-70 group-hover:opacity-40 transition-opacity duration-300" />
             <img
               src={promoPopupConfig.imageUrl}
-              alt="Special Promotion"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              alt="Promo Announcement"
+              className="w-full h-auto object-contain block group-hover:scale-[1.015] transition-transform duration-500 ease-out"
               referrerPolicy="no-referrer"
             />
             
+            {/* Subtle premium hover overlay highlight if link exists to indicate clickability */}
             {promoPopupConfig.linkUrl && (
-              <div className="absolute bottom-3 right-3 z-20 bg-purple-600/90 hover:bg-purple-500 text-white p-2 rounded-full text-xs flex items-center gap-1 shadow-md opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                <ExternalLink className="w-4 h-4" />
-              </div>
+              <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             )}
-          </div>
-
-          {/* Detail card interactions footer segment */}
-          <div className="p-5 md:p-6 flex flex-col gap-4 text-center">
-            <div className="flex flex-col gap-1 items-center">
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
-                💥 Special Announcement
-              </span>
-            </div>
-
-            {promoPopupConfig.buttonText && (
-              <button
-                onClick={handleActionClick}
-                className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-medium shadow-[0_4px_20px_rgba(168,85,247,0.35)] hover:shadow-[0_4px_25px_rgba(168,85,247,0.5)] transition-all duration-300 scale-100 hover:scale-[1.01] active:scale-[0.99] group"
-              >
-                <MessageSquare className="w-5 h-5 group-hover:animate-bounce" />
-                <span>{promoPopupConfig.buttonText}</span>
-              </button>
-            )}
-
-            <button
-              onClick={handleClose}
-              className="text-xs text-slate-400 hover:text-slate-100 transition-colors duration-200 mt-1 font-medium underline underline-offset-4"
-            >
-              এখন বন্ধ করুন
-            </button>
           </div>
         </motion.div>
       </div>
