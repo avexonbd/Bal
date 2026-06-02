@@ -326,7 +326,7 @@ export default function App() {
         <AdminPanel
           isOpen={true}
           isStandalonePWA={true}
-          onClose={() => {}}
+          onClose={() => setIsStandalone(false)}
         />
       </div>
     );

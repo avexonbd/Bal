@@ -110,6 +110,11 @@ interface ContentContextType {
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
+// Instant high-performance real-time synchronization channel for cross-tab or cross-iframe updates
+const contentSyncChannel = typeof window !== "undefined" && "BroadcastChannel" in window
+  ? new BroadcastChannel("avexon_content_sync")
+  : null;
+
 const defaultHero: HeroConfig = {
   title: "এভেক্সন (Avexon)",
   subtitle: "আপনার ব্যবসার জন্য প্রফেশনাল ডিজাইন ও ডেভেলপমেন্ট এবং সাশ্রয়ী রেডিমেড ওয়েবসাইট সলিউশন!",
@@ -331,13 +336,28 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [whyChooseUsStats, setWhyChooseUsStats] = useState<any[]>(() => safeGetLocalStorage("avx_c_why_choose_us_stats", defaultWhyChooseUsStats));
   const [whyChooseUsItems, setWhyChooseUsItems] = useState<any[]>(() => safeGetLocalStorage("avx_c_why_choose_us_items", defaultWhyChooseUsItems));
   const [promoPopupConfig, setPromoPopupConfig] = useState<PromoPopupConfig>(() => safeGetLocalStorage("avx_c_promo_popup", defaultPromoPopupConfig));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // Elegant performance optimization: if we already have local cache, load in 0ms!
+    if (typeof window !== "undefined") {
+      const hasHero = safeLocalStorage.getItem("avx_c_hero");
+      const hasLogo = safeLocalStorage.getItem("avx_c_logo");
+      if (hasHero && hasLogo) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   // Load from Supabase (or fallback local JSON DB) with localStorage as offline fallback
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
 
     const fetchInitialData = async () => {
+      // Prevent client frustration: dissolve loading screen after at most 280ms, continuing background hydration
+      const maxLoaderTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 280);
+
       try {
         if (isSupabaseConfigured && supabase) {
           // Fetch all content pieces from Supabase public table 'avexon_content'
@@ -581,6 +601,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
           if (storedPromoPopup) setPromoPopupConfig(JSON.parse(storedPromoPopup));
         } catch (subErr) {}
       } finally {
+        clearTimeout(maxLoaderTimer);
         setIsLoading(false);
       }
     };
@@ -620,6 +641,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
           if (d.customPackagePlans) setCustomPackagePlans(d.customPackagePlans);
           if (d.whyChooseUsStats) setWhyChooseUsStats(d.whyChooseUsStats);
           if (d.whyChooseUsItems) setWhyChooseUsItems(d.whyChooseUsItems);
+          if (d.promoPopupConfig) setPromoPopupConfig(d.promoPopupConfig);
         }
       } catch (e) {
         // Silent catch for stable client flow
@@ -636,8 +658,34 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       refreshContentSilently();
     };
 
+    // Instant cross-tab sync message handler via BroadcastChannel
+    const handleBroadcastMessage = (event: MessageEvent) => {
+      const updates = event.data;
+      if (updates && typeof updates === "object") {
+        console.log("Instant cross-tab broadcast update received:", updates);
+        if (updates.hero !== undefined) setHeroConfig(updates.hero);
+        if (updates.owner !== undefined) setOwner(updates.owner);
+        if (updates.services !== undefined) setServices(updates.services);
+        if (updates.websites !== undefined) setWebsites(updates.websites);
+        if (updates.portfolio !== undefined) setPortfolio(updates.portfolio);
+        if (updates.testimonials !== undefined) setTestimonials(updates.testimonials);
+        if (updates.team !== undefined) setTeam(updates.team);
+        if (updates.logoUrl !== undefined) setLogoUrl(updates.logoUrl);
+        if (updates.headerBranding !== undefined) setHeaderBranding(updates.headerBranding);
+        if (updates.noticeConfig !== undefined) setNoticeConfig(updates.noticeConfig);
+        if (updates.offerConfig !== undefined) setOfferConfig(updates.offerConfig);
+        if (updates.contactConfig !== undefined) setContactConfig(updates.contactConfig);
+        if (updates.sectionHeadings !== undefined) setSectionHeadings(updates.sectionHeadings);
+        if (updates.customPackagePlans !== undefined) setCustomPackagePlans(updates.customPackagePlans);
+        if (updates.whyChooseUsStats !== undefined) setWhyChooseUsStats(updates.whyChooseUsStats);
+        if (updates.whyChooseUsItems !== undefined) setWhyChooseUsItems(updates.whyChooseUsItems);
+        if (updates.promoPopupConfig !== undefined) setPromoPopupConfig(updates.promoPopupConfig);
+      }
+    };
+
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("focus", handleFocus);
+    contentSyncChannel?.addEventListener("message", handleBroadcastMessage);
 
     // Also poll every 2 seconds for active instant preview updates
     const pollInterval = setInterval(() => {
@@ -647,6 +695,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleFocus);
+      contentSyncChannel?.removeEventListener("message", handleBroadcastMessage);
       clearInterval(pollInterval);
     };
   }, []);
@@ -701,6 +750,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
       // Synchronously emit live signal timestamp in localStorage for cross-tab preview
       safeLocalStorage.setItem("avexon_content_last_updated", Date.now().toString());
+
+      // Synchronously broadcast updates over the BroadcastChannel to sync other open tabs/frames immediately
+      contentSyncChannel?.postMessage(updates);
 
       // Synchronously write each updated key to Supabase so socket server broadcasts to other listeners instantly
       if (isSupabaseConfigured && supabase) {
