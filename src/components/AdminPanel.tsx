@@ -502,6 +502,103 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
     return [];
   });
 
+  const fetchAndSyncOrders = async () => {
+    try {
+      let ordersMerged: any[] = [];
+      
+      const stored = safeLocalStorage.getItem("avexon_admin_orders");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            ordersMerged = parsed.map(normalizeSupabaseOrder).filter(Boolean);
+          }
+        } catch (_) {}
+      }
+
+      const mergedMap = new Map<string, any>();
+      const addToMergePool = (order: any) => {
+        if (!order || !order.id) return;
+        const id = String(order.id).trim();
+        if (mergedMap.has(id)) {
+          const existing = mergedMap.get(id);
+          const statusPriority = { "Pending": 0, "Payment Checking": 1, "Confirmed": 2, "Working": 3, "Done": 4 };
+          const existingPrio = statusPriority[existing.status as keyof typeof statusPriority] || 0;
+          const orderPrio = statusPriority[order.status as keyof typeof statusPriority] || 0;
+          
+          if (existingPrio > orderPrio && order.status === "Pending") {
+            mergedMap.set(id, { ...order, ...existing, createdAt: order.createdAt || existing.createdAt });
+          } else {
+            mergedMap.set(id, { ...existing, ...order });
+          }
+        } else {
+          mergedMap.set(id, order);
+        }
+      };
+
+      ordersMerged.forEach(addToMergePool);
+
+      if (isSupabaseOrdersConfigured && supabaseOrders) {
+        try {
+          const selectPromise = supabaseOrders.from("avexon_orders").select("*");
+          const result = await Promise.race([
+            selectPromise,
+            new Promise<{ data: null; error: any }>((resolve) =>
+              setTimeout(() => resolve({ data: null, error: new Error("Supabase client select timeout") }), 2000)
+            )
+          ]);
+          
+          const { data: supaData, error: supaErr } = result as any;
+          if (!supaErr && Array.isArray(supaData)) {
+            supaData.forEach((row: any) => {
+              const norm = normalizeSupabaseOrder(row);
+              if (norm) {
+                addToMergePool(norm);
+              }
+            });
+          }
+        } catch (err) {
+          console.warn("Direct client-side Supabase query failed:", err);
+        }
+      }
+
+      try {
+        const res = await fetch("/api/orders");
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          json.data.forEach((row: any) => {
+            const norm = normalizeSupabaseOrder(row);
+            if (norm) {
+              addToMergePool(norm);
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("API base order fetch failed inside sync:", err);
+      }
+
+      const finalMergedList = Array.from(mergedMap.values());
+
+      finalMergedList.sort((a: any, b: any) => {
+        const dateA = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (isNaN(dateA) || isNaN(dateB) || dateA === dateB) {
+          const idA = a && a.id ? String(a.id) : "";
+          const idB = b && b.id ? String(b.id) : "";
+          return idB.localeCompare(idA);
+        }
+        return dateB - dateA;
+      });
+
+      setAllOrders(finalMergedList);
+      safeLocalStorage.setItem("avexon_admin_orders", JSON.stringify(finalMergedList));
+      return finalMergedList;
+    } catch (e) {
+      console.error("Unified order fetch and sync error:", e);
+      return [];
+    }
+  };
+
   // Notifications state containing client orders & GitHub deployments logs
   const [notifications, setNotifications] = useState<AdminNotification[]>(() => {
     try {
@@ -1190,40 +1287,7 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
   // Load all incoming orders from tracking localDB/Server on open
   useEffect(() => {
     if (isOpen || isStandalonePWA) {
-      const fetchOrders = async () => {
-        try {
-          const res = await fetch("/api/orders");
-          const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
-            const serverOrders: any[] = json.data;
-            const normalized = serverOrders.map(normalizeSupabaseOrder).filter(Boolean);
-            setAllOrders(normalized);
-            safeLocalStorage.setItem("avexon_admin_orders", JSON.stringify(normalized));
-          } else {
-            const stored = safeLocalStorage.getItem("avexon_admin_orders");
-            if (stored) {
-              try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) {
-                  setAllOrders(parsed.map(normalizeSupabaseOrder).filter(Boolean));
-                }
-              } catch (_) {}
-            }
-          }
-        } catch (err) {
-          console.warn("Failed to fetch server orders, using fallback: ", err);
-          const stored = safeLocalStorage.getItem("avexon_admin_orders");
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed)) {
-                setAllOrders(parsed.map(normalizeSupabaseOrder).filter(Boolean));
-              }
-            } catch (_) {}
-          }
-        }
-      };
-      fetchOrders();
+      fetchAndSyncOrders();
     }
   }, [isOpen, isStandalonePWA]);
 
@@ -1318,12 +1382,8 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
 
     const checkNewOrders = async () => {
       try {
-        const res = await fetch("/api/orders");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          const rawOrders: any[] = json.data;
-          const ordersList: Order[] = rawOrders.map(normalizeSupabaseOrder).filter(Boolean);
-          let merged = ordersList;
+        const merged = await fetchAndSyncOrders();
+        if (Array.isArray(merged)) {
           const activeOrders = merged.filter(o => o.status !== "Done");
           
           // Update native PWA launcher app icon badge
@@ -1342,9 +1402,6 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
             triggerNewOrderFeedback(newlyCreated);
           }
           
-          // Update live state list and mirror updated data back to browser storage
-          setAllOrders(merged);
-          safeLocalStorage.setItem("avexon_admin_orders", JSON.stringify(merged));
           lastOrderCount = merged.length;
         } else {
           lastOrderCount = 0;
@@ -1530,18 +1587,7 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
     if (activeTab !== "orders") return;
 
     const fetchOrdersInstantly = async () => {
-      try {
-        const res = await fetch("/api/orders");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          const ordersList: any[] = json.data;
-          const normalized = ordersList.map(normalizeSupabaseOrder).filter(Boolean);
-          setAllOrders(normalized);
-          safeLocalStorage.setItem("avexon_admin_orders", JSON.stringify(normalized));
-        }
-      } catch (e) {
-        console.warn("Instant order polling error:", e);
-      }
+      await fetchAndSyncOrders();
     };
 
     fetchOrdersInstantly();
@@ -1571,18 +1617,8 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
         safeLocalStorage.setItem("avexon_admin_authenticated_persist", "true");
         setPasscode("");
         
-        // Fetch fresh orders instantly from the server upon successful login
-        fetch("/api/orders")
-          .then(res => res.json())
-          .then(json => {
-            if (json.success && Array.isArray(json.data)) {
-              const freshOrders = json.data;
-              const normalized = freshOrders.map(normalizeSupabaseOrder).filter(Boolean);
-              setAllOrders(normalized);
-              safeLocalStorage.setItem("avexon_admin_orders", JSON.stringify(normalized));
-            }
-          })
-          .catch(err => console.warn("Failed to fetch fresh orders on login: ", err));
+        // Fetch fresh orders instantly from Supabase/Server upon successful login
+        fetchAndSyncOrders().catch(err => console.warn("Failed to fetch fresh orders on login: ", err));
       } else {
         setAuthError(val.error || "ভুল পাসকোড! অনুগ্রহ করে সঠিক পাসকোড দিন।");
       }
@@ -1594,18 +1630,8 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
         safeLocalStorage.setItem("avexon_admin_authenticated_persist", "true");
         setPasscode("");
         
-        // Fetch fresh orders instantly from the server upon successful login fallback
-        fetch("/api/orders")
-          .then(res => res.json())
-          .then(json => {
-            if (json.success && Array.isArray(json.data)) {
-              const freshOrders = json.data;
-              const normalized = freshOrders.map(normalizeSupabaseOrder).filter(Boolean);
-              setAllOrders(normalized);
-              safeLocalStorage.setItem("avexon_admin_orders", JSON.stringify(normalized));
-            }
-          })
-          .catch(err => console.warn("Failed to fetch fresh orders on fallback login: ", err));
+        // Fetch fresh orders instantly from Supabase/Server upon successful login fallback
+        fetchAndSyncOrders().catch(err => console.warn("Failed to fetch fresh orders on fallback login: ", err));
       } else {
         setAuthError("ভুল পাসকোড বা সার্ভার সংযোগ ত্রুটি! অনুগ্রহ করে আবার চেষ্টা করুন।");
       }
