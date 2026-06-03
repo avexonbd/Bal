@@ -22,10 +22,25 @@ interface PortfolioProps {
 }
 
 export default function Portfolio({ onOrderRequest }: PortfolioProps) {
-  const { portfolio, portfolioCategories = [], sectionHeadings } = useContent();
+  const { portfolio, portfolioCategories = [], sectionHeadings, contactConfig } = useContent();
   const [filter, setFilter] = useState("All");
 
   const activeCategories = portfolioCategories.filter(cat => cat.active);
+
+  const getFormattedUrl = (url?: string) => {
+    if (!url || !url.trim()) {
+      if (contactConfig?.whatsappUrl) {
+        const wa = contactConfig.whatsappUrl.trim();
+        return wa.startsWith("http") ? wa : `https://wa.me/${wa.replace(/\D/g, "")}`;
+      }
+      return "https://wa.me/8801613911528";
+    }
+    const trimmed = url.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
 
   const getIconComponent = (iconName?: string) => {
     switch (iconName) {
@@ -220,7 +235,7 @@ export default function Portfolio({ onOrderRequest }: PortfolioProps) {
               >
                 {/* Image Section representation with hover premium indicators */}
                 <a 
-                  href={item.demoUrl}
+                  href={getFormattedUrl(item.demoUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="relative overflow-hidden aspect-video bg-slate-950 cursor-pointer group/img block"
@@ -284,7 +299,7 @@ export default function Portfolio({ onOrderRequest }: PortfolioProps) {
 
                     {/* Interactive "Visit Website" direct anchor link */}
                     <a
-                      href={item.demoUrl}
+                      href={getFormattedUrl(item.demoUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600/10 via-fuchsia-600/10 to-pink-600/10 hover:from-purple-600 hover:via-fuchsia-600 hover:to-pink-600 border border-purple-500/20 hover:border-transparent text-purple-300 hover:text-white text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer shadow-md select-none group/view-btn"

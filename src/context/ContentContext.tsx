@@ -361,15 +361,60 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     return true;
   });
 
+  // Master local storage caching synchronizer
+  const updateLocalCache = (updates: Record<string, any>) => {
+    const cacheKeyMap: Record<string, string> = {
+      hero: "avx_c_hero",
+      owner: "avx_c_owner",
+      services: "avx_c_services",
+      websites: "avx_c_websites",
+      portfolio: "avx_c_portfolio",
+      portfolioCategories: "avx_c_portfolio_categories",
+      testimonials: "avx_c_testimonials",
+      team: "avx_c_team",
+      logoUrl: "avx_c_logo",
+      headerBranding: "avx_c_header_branding",
+      noticeConfig: "avx_c_notice",
+      offerConfig: "avx_c_offer",
+      contactConfig: "avx_c_contact",
+      sectionHeadings: "avx_c_headings",
+      customPackagePlans: "avx_c_package_plans",
+      whyChooseUsStats: "avx_c_why_choose_us_stats",
+      whyChooseUsItems: "avx_c_why_choose_us_items",
+      promoPopupConfig: "avx_c_promo_popup"
+    };
+
+    Object.entries(updates).forEach(([key, val]) => {
+      const cacheKey = cacheKeyMap[key];
+      if (cacheKey && val !== undefined) {
+        try {
+          if (typeof val === "string" && key === "logoUrl") {
+            safeLocalStorage.setItem(cacheKey, val);
+          } else {
+            safeLocalStorage.setItem(cacheKey, JSON.stringify(val));
+          }
+        } catch (e) {
+          console.warn(`Error writing cache for ${key}:`, e);
+        }
+      }
+    });
+  };
+
   // Load from Supabase (or fallback local JSON DB) with localStorage as offline fallback
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
+    let safetyTimer: any = null;
 
     const fetchInitialData = async () => {
-      // Prevent client frustration: dissolve loading screen after at most 280ms, continuing background hydration
-      const maxLoaderTimer = setTimeout(() => {
-        setIsLoading(false);
-      }, 280);
+      // If we don't have cached data, hold loading screen for up to 4500ms safety limit.
+      // Otherwise, the page renders cached layout instantly and performs silent background revalidation.
+      const hasCache = safeLocalStorage.getItem("avx_c_hero") && safeLocalStorage.getItem("avx_c_logo");
+      if (!hasCache) {
+        setIsLoading(true); // force loader if absolutely no cache
+        safetyTimer = setTimeout(() => {
+          setIsLoading(false);
+        }, 4500);
+      }
 
       try {
         if (isSupabaseConfigured && supabase) {
@@ -398,10 +443,31 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
             if (dbMap.offerConfig) setOfferConfig(dbMap.offerConfig);
             if (dbMap.contactConfig) setContactConfig(dbMap.contactConfig);
             if (dbMap.sectionHeadings) setSectionHeadings(dbMap.sectionHeadings);
-                        if (dbMap.customPackagePlans) setCustomPackagePlans(dbMap.customPackagePlans);
+            if (dbMap.customPackagePlans) setCustomPackagePlans(dbMap.customPackagePlans);
             if (dbMap.whyChooseUsStats) setWhyChooseUsStats(dbMap.whyChooseUsStats);
             if (dbMap.whyChooseUsItems) setWhyChooseUsItems(dbMap.whyChooseUsItems);
             if (dbMap.promoPopupConfig) setPromoPopupConfig(dbMap.promoPopupConfig);
+
+            updateLocalCache({
+              hero: dbMap.hero,
+              owner: dbMap.owner,
+              services: dbMap.services,
+              websites: dbMap.websites,
+              portfolio: dbMap.portfolio,
+              portfolioCategories: dbMap.portfolioCategories,
+              testimonials: dbMap.testimonials,
+              team: dbMap.team,
+              logoUrl: dbMap.logoUrl,
+              headerBranding: dbMap.headerBranding,
+              noticeConfig: dbMap.noticeConfig,
+              offerConfig: dbMap.offerConfig,
+              contactConfig: dbMap.contactConfig,
+              sectionHeadings: dbMap.sectionHeadings,
+              customPackagePlans: dbMap.customPackagePlans,
+              whyChooseUsStats: dbMap.whyChooseUsStats,
+              whyChooseUsItems: dbMap.whyChooseUsItems,
+              promoPopupConfig: dbMap.promoPopupConfig
+            });
           } else if (error) {
             console.warn("Supabase content query failed, falling back to local Express content JSON DB:", error);
             const response = await fetch("/api/content");
@@ -413,7 +479,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
               if (d.services) setServices(d.services);
               if (d.websites) setWebsites(d.websites);
               if (d.portfolio) setPortfolio(d.portfolio);
-             if (d.portfolioCategories) setPortfolioCategories(d.portfolioCategories);
+              if (d.portfolioCategories) setPortfolioCategories(d.portfolioCategories);
               if (d.testimonials) setTestimonials(d.testimonials);
               if (d.team) setTeam(d.team);
               if (d.logoUrl) setLogoUrl(d.logoUrl);
@@ -422,10 +488,31 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
               if (d.offerConfig) setOfferConfig(d.offerConfig);
               if (d.contactConfig) setContactConfig(d.contactConfig);
               if (d.sectionHeadings) setSectionHeadings(d.sectionHeadings);
-                            if (d.customPackagePlans) setCustomPackagePlans(d.customPackagePlans);
+              if (d.customPackagePlans) setCustomPackagePlans(d.customPackagePlans);
               if (d.whyChooseUsStats) setWhyChooseUsStats(d.whyChooseUsStats);
               if (d.whyChooseUsItems) setWhyChooseUsItems(d.whyChooseUsItems);
               if (d.promoPopupConfig) setPromoPopupConfig(d.promoPopupConfig);
+
+              updateLocalCache({
+                hero: d.hero,
+                owner: d.owner,
+                services: d.services,
+                websites: d.websites,
+                portfolio: d.portfolio,
+                portfolioCategories: d.portfolioCategories,
+                testimonials: d.testimonials,
+                team: d.team,
+                logoUrl: d.logoUrl,
+                headerBranding: d.headerBranding,
+                noticeConfig: d.noticeConfig,
+                offerConfig: d.offerConfig,
+                contactConfig: d.contactConfig,
+                sectionHeadings: d.sectionHeadings,
+                customPackagePlans: d.customPackagePlans,
+                whyChooseUsStats: d.whyChooseUsStats,
+                whyChooseUsItems: d.whyChooseUsItems,
+                promoPopupConfig: d.promoPopupConfig
+              });
             }
           } else {
             // Seeding phase: Supabase table is empty, so let's push existing default and local state parameters
@@ -621,7 +708,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
           if (storedPromoPopup) setPromoPopupConfig(JSON.parse(storedPromoPopup));
         } catch (subErr) {}
       } finally {
-        clearTimeout(maxLoaderTimer);
+        if (safetyTimer) clearTimeout(safetyTimer);
         setIsLoading(false);
       }
     };
@@ -663,6 +750,27 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
           if (d.whyChooseUsStats) setWhyChooseUsStats(d.whyChooseUsStats);
           if (d.whyChooseUsItems) setWhyChooseUsItems(d.whyChooseUsItems);
           if (d.promoPopupConfig) setPromoPopupConfig(d.promoPopupConfig);
+
+          updateLocalCache({
+            hero: d.hero,
+            owner: d.owner,
+            services: d.services,
+            websites: d.websites,
+            portfolio: d.portfolio,
+            portfolioCategories: d.portfolioCategories,
+            testimonials: d.testimonials,
+            team: d.team,
+            logoUrl: d.logoUrl,
+            headerBranding: d.headerBranding,
+            noticeConfig: d.noticeConfig,
+            offerConfig: d.offerConfig,
+            contactConfig: d.contactConfig,
+            sectionHeadings: d.sectionHeadings,
+            customPackagePlans: d.customPackagePlans,
+            whyChooseUsStats: d.whyChooseUsStats,
+            whyChooseUsItems: d.whyChooseUsItems,
+            promoPopupConfig: d.promoPopupConfig
+          });
         }
       } catch (e) {
         // Silent catch for stable client flow
@@ -701,6 +809,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         if (updates.whyChooseUsStats !== undefined) setWhyChooseUsStats(updates.whyChooseUsStats);
         if (updates.whyChooseUsItems !== undefined) setWhyChooseUsItems(updates.whyChooseUsItems);
         if (updates.promoPopupConfig !== undefined) setPromoPopupConfig(updates.promoPopupConfig);
+
+        updateLocalCache(updates);
       }
     };
 

@@ -2034,7 +2034,8 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
       imageUrl: editPortfolioItem.imageUrl || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800",
       client: editPortfolioItem.client || "",
       year: editPortfolioItem.year || "২০২৬",
-      tags: editPortfolioItem.tags || []
+      tags: editPortfolioItem.tags || [],
+      demoUrl: editPortfolioItem.demoUrl || ""
     };
 
     let updatedList: PortfolioItem[];
