@@ -36,7 +36,16 @@ import {
   Compass,
   Menu,
   Bell,
-  Search
+  Search,
+  ShoppingCart,
+  Store,
+  Utensils,
+  User,
+  GraduationCap,
+  BookOpen,
+  FileText,
+  Newspaper,
+  Gamepad
 } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import { isSupabaseConfigured, supabase, isSupabaseOrdersConfigured, supabaseOrders, initializeSupabase } from "../lib/supabase";
@@ -464,6 +473,16 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
     return isStandalonePWA ? "orders" : "hero";
   });
   const [showPass, setShowPass] = useState<boolean>(false);
+  const [plannerCategory, setPlannerCategory] = useState<string>("ecommerce");
+  const [editingPlanIndex, setEditingPlanIndex] = useState<number>(0);
+  const [draftPlans, setDraftPlans] = useState<any[]>([]);
+
+  useEffect(() => {
+    const existing = (customPackagePlans && customPackagePlans[plannerCategory]) || getPlansDefaultsForCategory(plannerCategory);
+    if (existing) {
+      setDraftPlans(JSON.parse(JSON.stringify(existing)));
+    }
+  }, [plannerCategory, customPackagePlans]);
   const [saveSuccess, setSaveSuccess] = useState<string>("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
@@ -5516,6 +5535,281 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
                     </div>
                   </div>
                 )}
+
+
+                {/* Package Planner Tab */}
+                {activeTab === "package_planner" && (() => {
+                  const activePlan = draftPlans[editingPlanIndex];
+                  
+                  const handleLocalFieldChange = (field: string, val: any) => {
+                    const updated = [...draftPlans];
+                    if (updated[editingPlanIndex]) {
+                      updated[editingPlanIndex] = { ...updated[editingPlanIndex], [field]: val };
+                      setDraftPlans(updated);
+                    }
+                  };
+                  
+                  return (
+                    <div className="space-y-6 animate-fadeIn pb-6 font-sans">
+                      
+                      {/* Header bar */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2 border-b border-purple-500/10 pb-4">
+                        <div>
+                          <h3 className="text-sm font-bold text-[#fafafa] tracking-tight">
+                            প্যাকেজ প্ল্যানার কাস্টমাইজেশন (Package Planner & Pricing Manager)
+                          </h3>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">
+                            রেডি ওয়েবসাইট শপের বাইরের কাস্টমাইজড প্যাকেজ প্ল্যানার ক্যালকুলেটরের ১০টি ভিন্ন ক্যাটাগরি এবং প্রতিটির ৩টি প্যাকেজ (Normal, Pro, Premium) এর ডেটা এখান থেকে সহজে ম্যানেজ করুন।
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Step 1: Category Selection Grid */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+                          <span>১. ক্যাটাগরি নির্বাচন করুন (Select Category)</span>
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-w-5xl">
+                          {[
+                            { id: "ecommerce", name: "ই-কমার্স ওয়েবসাইট", icon: ShoppingCart },
+                            { id: "online_shop", name: "অনলাইন শপ ওয়েবসাইট", icon: Store },
+                            { id: "food_restaurant", name: "ফুড ও রেস্টুরেন্ট", icon: Utensils },
+                            { id: "agency", name: "ডিজিটাল এজেন্সি সাইট", icon: Briefcase },
+                            { id: "portfolio", name: "পার্সোনাল পোর্টফোলিও", icon: User },
+                            { id: "education", name: "এডুকেশন ওয়েবসাইট", icon: GraduationCap },
+                            { id: "course_platform", name: "অনলাইন কোর্স প্ল্যাটফর্ম", icon: BookOpen },
+                            { id: "blog", name: "ব্লগ ওয়েবসাইট", icon: FileText },
+                            { id: "news_portal", name: "নিউজ পোর্টাল", icon: Newspaper },
+                            { id: "esports", name: "ই-স্পোর্টস ટીમ", icon: Gamepad },
+                          ].map((categoryItem) => {
+                            const IconComp = categoryItem.icon;
+                            const isCatActive = plannerCategory === categoryItem.id;
+                            return (
+                              <button
+                                key={categoryItem.id}
+                                type="button"
+                                onClick={() => {
+                                  setPlannerCategory(categoryItem.id);
+                                  setEditingPlanIndex(0); // Reset to Normal first
+                                }}
+                                className={`p-3.5 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer border ${
+                                  isCatActive
+                                    ? "bg-yellow-500/10 border-yellow-500/50 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.1)]"
+                                    : "bg-[#0b041a] border-purple-500/10 text-slate-300 hover:border-purple-500/25 hover:text-slate-100"
+                                }`}
+                              >
+                                <IconComp className={`w-5 h-5 ${isCatActive ? "text-yellow-400" : "text-purple-400"}`} />
+                                <span className="text-[10px] font-bold leading-tight font-sans">{categoryItem.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Step 2: Main Layout Grid */}
+                      {draftPlans && draftPlans.length > 0 ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-5xl">
+                          
+                          {/* Plans Selector Cards (3 Columns left) */}
+                          <div className="lg:col-span-4 space-y-4">
+                            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5 pb-1">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>২. প্যাকেজ নির্বাচন (Normal / Pro / Premium)</span>
+                            </h4>
+                            
+                            <div className="flex flex-col gap-3">
+                              {draftPlans.map((plan, idx) => {
+                                const isPlanEditing = editingPlanIndex === idx;
+                                const colors = [
+                                  { label: "Normal (বেসিক)", border: "border-blue-500/30", bg: "bg-blue-600/5", text: "text-blue-400" },
+                                  { label: "Pro (অ্যাডভান্সড)", border: "border-purple-500/30", bg: "bg-purple-600/5", text: "text-purple-400" },
+                                  { label: "Premium (মেগা)", border: "border-rose-500/30", bg: "bg-rose-600/5", text: "text-rose-400" }
+                                ];
+                                const currentStyle = colors[idx] || colors[0];
+                                
+                                return (
+                                  <button
+                                    key={plan.id || idx}
+                                    type="button"
+                                    onClick={() => setEditingPlanIndex(idx)}
+                                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col gap-1.5 ${
+                                      isPlanEditing
+                                        ? "border-yellow-500 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.08)] scale-[1.01]"
+                                        : `${currentStyle.border} ${currentStyle.bg} hover:scale-[1.005] hover:border-purple-500/20`
+                                    }`}
+                                  >
+                                    {plan.badge && (
+                                      <span className="absolute top-3 right-3 bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider scale-90">
+                                        {plan.badge}
+                                      </span>
+                                    )}
+                                    <span className={`text-[9px] uppercase tracking-widest font-black ${isPlanEditing ? 'text-yellow-400' : currentStyle.text}`}>
+                                      {currentStyle.label}
+                                    </span>
+                                    <h5 className="text-[11px] font-bold text-slate-100 font-sans">{plan.banglaName || plan.name}</h5>
+                                    <span className="text-[11px] font-mono font-bold text-yellow-500">৳ {plan.price.toLocaleString("bn-BD")} ({plan.price} TK)</span>
+                                    <span className="text-[10px] text-slate-400 leading-tight font-sans line-clamp-1">{plan.tagline}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Quick Reset Controls */}
+                            <div className="bg-[#0b041a] p-4 rounded-xl border border-purple-500/5 space-y-3">
+                              <span className="text-[10px] text-slate-400 block leading-relaxed font-sans">
+                                যদি কাস্টম প্যাকেজ সেটিংস রিসেট করে আগের ডিফল্ট ডেটায় ফিরে যেতে চান, তবে নিচের বাটনটি ব্যবহার করুন:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm("আপনি কি নিশ্চিতভাবে এই ক্যাটাগরির প্যাকেজগুলোকে ডিফল্ট কনফিগারেশনে ফিরিয়ে নিতে চান?")) {
+                                    const defaults = getPlansDefaultsForCategory(plannerCategory);
+                                    setDraftPlans(JSON.parse(JSON.stringify(defaults)));
+                                    setEditingPlanIndex(0);
+                                  }
+                                }}
+                                className="w-full bg-slate-950 hover:bg-slate-900 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/30 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer font-sans text-center"
+                              >
+                                ডিফল্ট সেটিংসে রিসেট করুন
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Detailed Plan Form Editor (8 Columns right) */}
+                          <div className="lg:col-span-8 space-y-4">
+                            {activePlan ? (
+                              <div className="border border-purple-500/10 bg-[#0e051d] p-5 rounded-2xl space-y-5 shadow-sm">
+                                <div className="border-b border-purple-500/5 pb-2">
+                                  <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Edit3 className="w-4 h-4 text-purple-400" />
+                                    <span>৩. {editingPlanIndex === 0 ? "Normal" : editingPlanIndex === 1 ? "Pro" : "Premium"} প্যাকেজ প্রোপার্টিজ এডিটর</span>
+                                  </h4>
+                                  <p className="text-[10px] text-slate-400 leading-normal font-sans">
+                                    বর্তমানে নির্বাচিত প্যাকেজের নাম, মূল্য, ডেলিভারি দিন ও বৈশিষ্ট্যগুলো এখান থেকে ফাইন-টিউন করুন।
+                                  </p>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-slate-400 text-[10px] font-bold mb-1.5">প্যাকেজর বাংলা নাম (Bangla Name)</label>
+                                    <input
+                                      type="text"
+                                      value={activePlan.banglaName || ""}
+                                      onChange={(e) => handleLocalFieldChange("banglaName", e.target.value)}
+                                      className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 font-sans"
+                                      placeholder="যেমন: অ্যাভেক্সন প্রো"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-slate-400 text-[10px] font-bold mb-1.5">প্যাকেজ ব্যাজ (Badge - Optional)</label>
+                                    <input
+                                      type="text"
+                                      value={activePlan.badge || ""}
+                                      onChange={(e) => handleLocalFieldChange("badge", e.target.value)}
+                                      className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 font-sans"
+                                      placeholder="যেমন: জনপ্রিয় বা সেরা পছন্দ"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-slate-400 text-[10px] font-bold mb-1.5">প্যাকেজর মূল্য (Price in Taka)</label>
+                                    <input
+                                      type="number"
+                                      value={activePlan.price || 0}
+                                      onChange={(e) => handleLocalFieldChange("price", parseInt(e.target.value) || 0)}
+                                      className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 font-sans"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-slate-400 text-[10px] font-bold mb-1.5">ডেলিভারি সময় (Delivery Time)</label>
+                                    <input
+                                      type="text"
+                                      value={activePlan.deliveryTime || ""}
+                                      onChange={(e) => handleLocalFieldChange("deliveryTime", e.target.value)}
+                                      className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 font-sans"
+                                      placeholder="যেমন: ৩-৬ দিন"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-slate-400 text-[10px] font-bold mb-1.5">প্যাকেজ ট্যাগলাইন (Tagline)</label>
+                                  <input
+                                    type="text"
+                                    value={activePlan.tagline || ""}
+                                    onChange={(e) => handleLocalFieldChange("tagline", e.target.value)}
+                                    className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 font-sans"
+                                    placeholder="সংক্ষিপ্ত স্লোগান..."
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-slate-400 text-[10px] font-bold mb-1.5">প্যাকেজ বর্ণনা (Description)</label>
+                                  <textarea
+                                    rows={2}
+                                    value={activePlan.description || ""}
+                                    onChange={(e) => handleLocalFieldChange("description", e.target.value)}
+                                    className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 leading-normal font-sans"
+                                    placeholder="প্যাকেজের পরিচিতি বা বিবরণ..."
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[#a78bfa] text-[10px] font-black mb-1.5 uppercase tracking-widest flex items-center gap-1">
+                                    <CheckCircle className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+                                    <span>ফিচারসমূহ (Core Features - One per line)</span>
+                                  </label>
+                                  <textarea
+                                    rows={5}
+                                    value={activePlan.features ? activePlan.features.join("\n") : ""}
+                                    onChange={(e) => {
+                                      const lines = e.target.value.split("\n");
+                                      handleLocalFieldChange("features", lines);
+                                    }}
+                                    className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500 leading-normal font-sans"
+                                    placeholder="ফিচারগুলো লাইনভিত্তিক লিস্ট হিসেবে লিখুন..."
+                                  />
+                                  <p className="text-[9px] text-slate-500 mt-1.5 font-sans leading-tight">
+                                    * প্রতিটি লাইনে একটি করে কাস্টম ফিচার লিখুন। কীবোর্ড এর Enter কী চেপে নতুন লাইনে লিখতে পারবেন।
+                                  </p>
+                                </div>
+
+                                <div className="flex justify-end pt-2 border-t border-purple-500/5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedAll = { ...(customPackagePlans || {}) };
+                                      updatedAll[plannerCategory] = draftPlans;
+                                      updateCustomPackagePlans(updatedAll);
+                                      setSaveSuccess("প্যাকেজ প্ল্যান সফলভাবে সংরক্ষণ করা হয়েছে!");
+                                      setTimeout(() => setSaveSuccess(""), 4000);
+                                    }}
+                                    className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-sans font-black text-[11px] px-6 py-3 rounded-xl transition-colors cursor-pointer shadow-lg shadow-yellow-500/10"
+                                  >
+                                    প্যাকেজ সেভ করুন (Save Category Packages)
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+
+                        </div>
+                      ) : (
+                        <div className="max-w-5xl text-center py-12 border border-dashed border-purple-500/10 bg-[#0e051d] rounded-2xl">
+                          <Loader2 className="w-6 h-6 text-purple-400 animate-spin mx-auto mb-2" />
+                          <span className="text-xs text-slate-400">লোডিং... প্যাকেজ তথ্য প্রস্তুত করা হচ্ছে।</span>
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })()}
 
 
                 {/* 12. CONTACT INFO & GATEWAYS TAB */}
