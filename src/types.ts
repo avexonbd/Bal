@@ -36,6 +36,13 @@ export interface PortfolioItem {
   demoUrl?: string;
 }
 
+export interface PortfolioCategory {
+  id: string;
+  label: string;
+  active: boolean;
+  iconName?: string;
+}
+
 export interface Testimonial {
   id: string;
   name: string;

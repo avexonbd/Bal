@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { WebsiteProduct, Service, PortfolioItem, Testimonial, TeamMember, NoticeItem, NoticeConfig, OfferConfig, ContactConfig, PackagePlan, PromoPopupConfig } from "../types";
+import { WebsiteProduct, Service, PortfolioItem, PortfolioCategory, Testimonial, TeamMember, NoticeItem, NoticeConfig, OfferConfig, ContactConfig, PackagePlan, PromoPopupConfig } from "../types";
 import { SERVICES, WEBSITES, PORTFOLIO, TESTIMONIALS, TEAM } from "../data";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { safeLocalStorage } from "../utils/safeStorage";
@@ -56,6 +56,7 @@ interface ContentContextType {
   services: Service[];
   websites: WebsiteProduct[];
   portfolio: PortfolioItem[];
+  portfolioCategories: PortfolioCategory[];
   testimonials: Testimonial[];
   team: TeamMember[];
   logoUrl: string;
@@ -73,6 +74,7 @@ interface ContentContextType {
   updateServices: (newServices: Service[]) => void;
   updateWebsites: (newWebsites: WebsiteProduct[]) => void;
   updatePortfolio: (newPortfolio: PortfolioItem[]) => void;
+  updatePortfolioCategories: (newCats: PortfolioCategory[]) => void;
   updateTestimonials: (newTestimonials: Testimonial[]) => void;
   updateTeam: (newTeam: TeamMember[]) => void;
   updateLogoUrl: (url: string) => void;
@@ -91,6 +93,7 @@ interface ContentContextType {
     services?: Service[];
     websites?: WebsiteProduct[];
     portfolio?: PortfolioItem[];
+    portfolioCategories?: PortfolioCategory[];
     testimonials?: Testimonial[];
     team?: TeamMember[];
     logoUrl?: string;
@@ -208,6 +211,15 @@ const defaultContact: ContactConfig = {
   whatsappUrl: "https://wa.me/8801613911528"
 };
 
+export const defaultPortfolioCategories: PortfolioCategory[] = [
+  { id: "UI/UX ডিজাইন ও ওয়েব", label: "UI/UX ডিজাইন", active: true, iconName: "Layers" },
+  { id: "মোবাইল অ্যাপ", label: "মোবাইল অ্যাপ", active: true, iconName: "Smartphone" },
+  { id: "ওয়েব ডেভেলপমেন্ট", label: "ওয়েব ডেভেলপমেন্ট", active: true, iconName: "Code2" },
+  { id: "প্রিমিয়াম ই-কমার্স", label: "প্রিমিয়াম ই-কমার্স", active: true, iconName: "ShoppingCart" },
+  { id: "কর্পোরেট ওয়েবসাইট", label: "কর্পোরেট ওয়েবসাইট", active: true, iconName: "Briefcase" },
+  { id: "মিডিয়া ও ব্লগ পোর্টাল", label: "মিডিয়া ও ব্লগ পোর্টাল", active: true, iconName: "FileText" }
+];
+
 const defaultSectionHeadings: SectionHeadingsConfig = {
   servicesTitle: "আমাদের সেবা বিস্তারিত",
   servicesSubtitle: "আমরা আপনাদের জন্য যা যা করে থাকি",
@@ -324,6 +336,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [services, setServices] = useState<Service[]>(() => safeGetLocalStorage("avx_c_services", SERVICES));
   const [websites, setWebsites] = useState<WebsiteProduct[]>(() => safeGetLocalStorage("avx_c_websites", WEBSITES));
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>(() => safeGetLocalStorage("avx_c_portfolio", PORTFOLIO));
+  const [portfolioCategories, setPortfolioCategories] = useState<PortfolioCategory[]>(() => safeGetLocalStorage("avx_c_portfolio_categories", defaultPortfolioCategories));
   const [testimonials, setTestimonials] = useState<Testimonial[]>(() => safeGetLocalStorage("avx_c_testimonials", TESTIMONIALS));
   const [team, setTeam] = useState<TeamMember[]>(() => safeGetLocalStorage("avx_c_team", TEAM));
   const [logoUrl, setLogoUrl] = useState<string>(() => safeGetLocalStorage("avx_c_logo", "https://www.image2url.com/r2/default/images/1780210596854-d50e17fe-f288-45b0-8d70-5a0cb736b9be.jpeg"));
@@ -376,6 +389,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
             if (dbMap.services) setServices(dbMap.services);
             if (dbMap.websites) setWebsites(dbMap.websites);
             if (dbMap.portfolio) setPortfolio(dbMap.portfolio);
+            if (dbMap.portfolioCategories) setPortfolioCategories(dbMap.portfolioCategories);
             if (dbMap.testimonials) setTestimonials(dbMap.testimonials);
             if (dbMap.team) setTeam(dbMap.team);
             if (dbMap.logoUrl) setLogoUrl(dbMap.logoUrl);
@@ -399,6 +413,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
               if (d.services) setServices(d.services);
               if (d.websites) setWebsites(d.websites);
               if (d.portfolio) setPortfolio(d.portfolio);
+             if (d.portfolioCategories) setPortfolioCategories(d.portfolioCategories);
               if (d.testimonials) setTestimonials(d.testimonials);
               if (d.team) setTeam(d.team);
               if (d.logoUrl) setLogoUrl(d.logoUrl);
@@ -420,6 +435,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
               services: SERVICES,
               websites: WEBSITES,
               portfolio: PORTFOLIO,
+              portfolioCategories: defaultPortfolioCategories,
               testimonials: TESTIMONIALS,
               team: TEAM,
               logoUrl: "https://www.image2url.com/r2/default/images/1780210596854-d50e17fe-f288-45b0-8d70-5a0cb736b9be.jpeg",
@@ -456,6 +472,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
                   case "services": setServices(value); break;
                   case "websites": setWebsites(value); break;
                   case "portfolio": setPortfolio(value); break;
+                  case "portfolioCategories": setPortfolioCategories(value); break;
                   case "testimonials": setTestimonials(value); break;
                   case "team": setTeam(value); break;
                   case "logoUrl": setLogoUrl(value); break;
@@ -483,6 +500,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
                   if (updates.services !== undefined) setServices(updates.services);
                   if (updates.websites !== undefined) setWebsites(updates.websites);
                   if (updates.portfolio !== undefined) setPortfolio(updates.portfolio);
+                  if (updates.portfolioCategories !== undefined) setPortfolioCategories(updates.portfolioCategories);
                   if (updates.testimonials !== undefined) setTestimonials(updates.testimonials);
                   if (updates.team !== undefined) setTeam(updates.team);
                   if (updates.logoUrl !== undefined) setLogoUrl(updates.logoUrl);
@@ -529,6 +547,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
             const storedServices = safeLocalStorage.getItem("avx_c_services");
             const storedWebsites = safeLocalStorage.getItem("avx_c_websites");
             const storedPortfolio = safeLocalStorage.getItem("avx_c_portfolio");
+           const storedCats = safeLocalStorage.getItem("avx_c_portfolio_categories");
+           if (storedCats) setPortfolioCategories(JSON.parse(storedCats));
             const storedTestimonials = safeLocalStorage.getItem("avx_c_testimonials");
             const storedTeam = safeLocalStorage.getItem("avx_c_team");
             const storedLogo = safeLocalStorage.getItem("avx_c_logo");
@@ -630,6 +650,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
           if (d.services) setServices(d.services);
           if (d.websites) setWebsites(d.websites);
           if (d.portfolio) setPortfolio(d.portfolio);
+          if (d.portfolioCategories) setPortfolioCategories(d.portfolioCategories);
           if (d.testimonials) setTestimonials(d.testimonials);
           if (d.team) setTeam(d.team);
           if (d.logoUrl) setLogoUrl(d.logoUrl);
@@ -707,6 +728,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     services?: Service[];
     websites?: WebsiteProduct[];
     portfolio?: PortfolioItem[];
+    portfolioCategories?: PortfolioCategory[];
     testimonials?: Testimonial[];
     team?: TeamMember[];
     logoUrl?: string;
@@ -727,6 +749,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         services: updates.services !== undefined ? updates.services : services,
         websites: updates.websites !== undefined ? updates.websites : websites,
         portfolio: updates.portfolio !== undefined ? updates.portfolio : portfolio,
+        portfolioCategories: updates.portfolioCategories !== undefined ? updates.portfolioCategories : portfolioCategories,
         testimonials: updates.testimonials !== undefined ? updates.testimonials : testimonials,
         team: updates.team !== undefined ? updates.team : team,
         logoUrl: updates.logoUrl !== undefined ? updates.logoUrl : logoUrl,
@@ -897,6 +920,12 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     saveStateToServer({ portfolio: newPortfolio });
   };
 
+  const updatePortfolioCategories = (newCats: PortfolioCategory[]) => {
+    setPortfolioCategories(newCats);
+    safeLocalStorage.setItem("avx_c_portfolio_categories", JSON.stringify(newCats));
+    saveStateToServer({ portfolioCategories: newCats });
+  };
+
   const updateTestimonials = (newTestimonials: Testimonial[]) => {
     setTestimonials(newTestimonials);
     safeLocalStorage.setItem("avx_c_testimonials", JSON.stringify(newTestimonials));
@@ -975,6 +1004,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     services?: Service[];
     websites?: WebsiteProduct[];
     portfolio?: PortfolioItem[];
+    portfolioCategories?: PortfolioCategory[];
     testimonials?: Testimonial[];
     team?: TeamMember[];
     logoUrl?: string;
@@ -1007,6 +1037,10 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     if (updates.portfolio !== undefined) {
       setPortfolio(updates.portfolio);
       safeLocalStorage.setItem("avx_c_portfolio", JSON.stringify(updates.portfolio));
+    }
+    if (updates.portfolioCategories !== undefined) {
+      setPortfolioCategories(updates.portfolioCategories);
+      safeLocalStorage.setItem("avx_c_portfolio_categories", JSON.stringify(updates.portfolioCategories));
     }
     if (updates.testimonials !== undefined) {
       setTestimonials(updates.testimonials);
@@ -1066,6 +1100,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     setServices(SERVICES);
     setWebsites(WEBSITES);
     setPortfolio(PORTFOLIO);
+    setPortfolioCategories(defaultPortfolioCategories);
     setTestimonials(TESTIMONIALS);
     setTeam(TEAM);
     setLogoUrl("");
@@ -1082,6 +1117,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     safeLocalStorage.removeItem("avx_c_services");
     safeLocalStorage.removeItem("avx_c_websites");
     safeLocalStorage.removeItem("avx_c_portfolio");
+    safeLocalStorage.removeItem("avx_c_portfolio_categories");
     safeLocalStorage.removeItem("avx_c_testimonials");
     safeLocalStorage.removeItem("avx_c_team");
     safeLocalStorage.removeItem("avx_c_logo");
@@ -1128,6 +1164,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         services,
         websites,
         portfolio,
+        portfolioCategories,
         testimonials,
         team,
         logoUrl,
@@ -1141,6 +1178,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         updateServices,
         updateWebsites,
         updatePortfolio,
+        updatePortfolioCategories,
         updateTestimonials,
         updateTeam,
         updateLogoUrl,

@@ -11,7 +11,10 @@ import {
   ArrowUpRight,
   LayoutGrid,
   Smartphone,
-  Code2
+  Code2,
+  ShoppingCart,
+  Briefcase,
+  FileText
 } from "lucide-react";
 
 interface PortfolioProps {
@@ -19,14 +22,29 @@ interface PortfolioProps {
 }
 
 export default function Portfolio({ onOrderRequest }: PortfolioProps) {
-  const { portfolio, sectionHeadings } = useContent();
+  const { portfolio, portfolioCategories = [], sectionHeadings } = useContent();
   const [filter, setFilter] = useState("All");
+
+  const activeCategories = portfolioCategories.filter(cat => cat.active);
+
+  const getIconComponent = (iconName?: string) => {
+    switch (iconName) {
+      case "Smartphone": return Smartphone;
+      case "Code2": return Code2;
+      case "ShoppingCart": return ShoppingCart;
+      case "Briefcase": return Briefcase;
+      case "FileText": return FileText;
+      default: return Layers;
+    }
+  };
 
   const categoryConfig = [
     { id: "All", label: "সব প্রজেক্ট", icon: LayoutGrid },
-    { id: "UI/UX ডিজাইন ও ওয়েব", label: "UI/UX ডিজাইন", icon: Layers },
-    { id: "মোবাইল অ্যাপ", label: "মোবাইল অ্যাপ", icon: Smartphone },
-    { id: "ওয়েব ডেভেলপমেন্ট", label: "ওয়েব ডেভেলপমেন্ট", icon: Code2 }
+    ...activeCategories.map(cat => ({
+      id: cat.id,
+      label: cat.label,
+      icon: getIconComponent(cat.iconName)
+    }))
   ];
 
   const filteredItems = filter === "All" 

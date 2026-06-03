@@ -45,11 +45,15 @@ import {
   BookOpen,
   FileText,
   Newspaper,
-  Gamepad
+  Gamepad,
+  Layers,
+  Smartphone,
+  Code2,
+  FolderGit2
 } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import { isSupabaseConfigured, supabase, isSupabaseOrdersConfigured, supabaseOrders, initializeSupabase } from "../lib/supabase";
-import { WebsiteProduct, Service, PortfolioItem, Testimonial, TeamMember, ContactConfig } from "../types";
+import { WebsiteProduct, Service, PortfolioItem, PortfolioCategory, Testimonial, TeamMember, ContactConfig } from "../types";
 import { safeLocalStorage, safeSessionStorage } from "../utils/safeStorage";
 import { Order, OrderStatus } from "./CheckoutModal";
 
@@ -366,6 +370,7 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
     services,
     websites,
     portfolio,
+    portfolioCategories,
     testimonials,
     team,
     logoUrl,
@@ -380,6 +385,7 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
     updateServices,
     updateWebsites,
     updatePortfolio,
+    updatePortfolioCategories,
     updateTestimonials,
     updateTeam,
     updateLogoUrl,
@@ -1191,6 +1197,11 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
   const [editWebItem, setEditWebItem] = useState<Partial<WebsiteProduct> | null>(null);
   const [editServiceItem, setEditServiceItem] = useState<Partial<Service> | null>(null);
   const [editPortfolioItem, setEditPortfolioItem] = useState<Partial<PortfolioItem> | null>(null);
+  const [portfolioSubTab, setPortfolioSubTab] = useState<"items" | "categories">("items");
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatLabel, setEditingCatLabel] = useState("");
+  const [editingCatIcon, setEditingCatIcon] = useState("");
   const [editTestimonialItem, setEditTestimonialItem] = useState<Partial<Testimonial> | null>(null);
   const [editTeamItem, setEditTeamItem] = useState<Partial<TeamMember> | null>(null);
 
@@ -4565,10 +4576,10 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
                   <div className="space-y-5">
                     <div className="flex items-center justify-between gap-4 font-sans max-w-4xl">
                       <div>
-                        <h3 className="text-sm font-bold text-purple-400 font-sans">এভেক্সন প্রজেক্ট পোর্টফোলিও</h3>
-                        <p className="text-[10px] text-slate-400 font-sans">বিভাগ, ছবি লিংক, ক্লায়েন্ট এবং ট্যাগসমূহ কাস্টমাইজ করুন।</p>
+                        <h3 className="text-sm font-bold text-purple-400 font-sans">এভেক্সন প্রজেক্ট পোর্টফোলিও ও ক্যাটাগরি</h3>
+                        <p className="text-[10px] text-slate-400 font-sans">প্রজেক্ট, ক্যাটাগরি, থাম্বনেইল ছবি সরাসরি আপলোড এবং বিবরণ পরিচালনা করুন।</p>
                       </div>
-                      {!editPortfolioItem && (
+                      {portfolioSubTab === "items" && !editPortfolioItem && (
                         <button
                           onClick={() => setEditPortfolioItem({})}
                           className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] px-3.5 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer font-sans"
@@ -4579,93 +4590,371 @@ export default function AdminPanel({ isOpen, onClose, isStandalonePWA = false }:
                       )}
                     </div>
 
-                    {editPortfolioItem ? (
-                      <div className="border border-purple-500/20 bg-[#0e051d] p-5 rounded-2xl space-y-4 max-w-3xl font-sans">
-                        <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest font-sans">
-                          পোর্টফোলিও ডাটা ফরম
-                        </h4>
+                    {/* Sub-tabs to toggle between items list and category managers */}
+                    <div className="flex border-b border-purple-500/10 gap-2 mb-4 font-sans">
+                      <button
+                        onClick={() => { setPortfolioSubTab("items"); setEditPortfolioItem(null); }}
+                        className={`pb-2 px-3 text-xs font-bold font-sans cursor-pointer border-b-2 transition-all duration-200 ${
+                          portfolioSubTab === "items" 
+                            ? "border-purple-600 text-purple-400" 
+                            : "border-transparent text-slate-400 hover:text-slate-300"
+                        }`}
+                      >
+                        প্রজেক্ট তালিকা সারণী
+                      </button>
+                      <button
+                        onClick={() => { setPortfolioSubTab("categories"); setEditPortfolioItem(null); }}
+                        className={`pb-2 px-3 text-xs font-bold font-sans cursor-pointer border-b-2 transition-all duration-200 ${
+                          portfolioSubTab === "categories" 
+                            ? "border-purple-600 text-purple-400" 
+                            : "border-transparent text-slate-400 hover:text-slate-300"
+                        }`}
+                      >
+                        ক্যাটাগরি ম্যানেজমেন্ট
+                      </button>
+                    </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
-                          <div>
-                            <label className="block text-slate-400 text-[11px] font-bold mb-2">প্রজেক্টের নাম (বাংলা)</label>
-                            <input
-                              type="text"
-                              value={editPortfolioItem.title || ""}
-                              onChange={(e) => setEditPortfolioItem({...editPortfolioItem, title: e.target.value})}
-                              className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-400 text-[11px] font-bold mb-2">ক্যাটাগরি</label>
-                            <input
-                              type="text"
-                              value={editPortfolioItem.category || ""}
-                              onChange={(e) => setEditPortfolioItem({...editPortfolioItem, category: e.target.value})}
-                              className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-400 text-[11px] font-bold mb-2">ছবি লিংক ইউআরএল</label>
-                            <input
-                              type="text"
-                              value={editPortfolioItem.imageUrl || ""}
-                              onChange={(e) => setEditPortfolioItem({...editPortfolioItem, imageUrl: e.target.value})}
-                              className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-400 text-[11px] font-bold mb-2">ক্লায়েন্ট</label>
-                            <input
-                              type="text"
-                              value={editPortfolioItem.client || ""}
-                              onChange={(e) => setEditPortfolioItem({...editPortfolioItem, client: e.target.value})}
-                              className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
-                            />
-                          </div>
-                        </div>
+                    {portfolioSubTab === "items" ? (
+                      editPortfolioItem ? (
+                        <div className="border border-purple-500/20 bg-[#0e051d] p-5 rounded-2xl space-y-4 max-w-3xl font-sans">
+                          <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest font-sans">
+                            পোর্টফোলিও প্রজেক্ট ফরম
+                          </h4>
 
-                        <div className="flex justify-end gap-2 pt-2 font-sans">
-                          <button
-                            onClick={() => setEditPortfolioItem(null)}
-                            className="bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl cursor-pointer"
-                          >
-                            বাতিল
-                          </button>
-                          <button
-                            onClick={handleSavePortfolio}
-                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2 rounded-xl cursor-pointer"
-                          >
-                            সংরক্ষণ করুন
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans">
-                        {portfolio.map((p) => (
-                          <div key={p.id} className="bg-[#0e051d] border border-purple-500/10 p-4 rounded-2xl flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <img src={p.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
+                            <div>
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">প্রজেক্টের নাম (বাংলা)</label>
+                              <input
+                                type="text"
+                                value={editPortfolioItem.title || ""}
+                                onChange={(e) => setEditPortfolioItem({...editPortfolioItem, title: e.target.value})}
+                                placeholder="উদা: কুরিয়ার ট্র্যাকিং মোবাইল অ্যাপ"
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">ক্যাটাগরি নির্ধারণ করুন</label>
+                              <select
+                                value={portfolioCategories.some(c => c.id === editPortfolioItem.category) ? editPortfolioItem.category : (editPortfolioItem.category ? "custom" : "")}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === "custom") {
+                                    setEditPortfolioItem({...editPortfolioItem, category: ""});
+                                  } else {
+                                    setEditPortfolioItem({...editPortfolioItem, category: val});
+                                  }
+                                }}
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                              >
+                                <option value="">-- ক্যাটাগরি সিলেক্ট করুন --</option>
+                                {portfolioCategories.map(cat => (
+                                  <option key={cat.id} value={cat.id}>{cat.label} {cat.active ? '' : '(অফ)'}</option>
+                                ))}
+                                <option value="custom">-- নিজস্ব নতুন ক্যাটাগরি লিখুন --</option>
+                              </select>
+                              {(!portfolioCategories.some(c => c.id === editPortfolioItem.category) || editPortfolioItem.category === "") && (
+                                <input
+                                  type="text"
+                                  placeholder="নতুন ক্যাটাগরির নাম টাইপ করুন..."
+                                  value={editPortfolioItem.category || ""}
+                                  onChange={(e) => setEditPortfolioItem({...editPortfolioItem, category: e.target.value})}
+                                  className="mt-2 w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                                />
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">ক্লায়েন্ট / প্রতিষ্ঠানের নাম</label>
+                              <input
+                                type="text"
+                                value={editPortfolioItem.client || ""}
+                                onChange={(e) => setEditPortfolioItem({...editPortfolioItem, client: e.target.value})}
+                                placeholder="উদা: অরণ্য ক্রাফটস লিমিটেড"
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">সম্পন্ন করার বছর</label>
+                              <input
+                                type="text"
+                                value={editPortfolioItem.year || ""}
+                                onChange={(e) => setEditPortfolioItem({...editPortfolioItem, year: e.target.value})}
+                                placeholder="উদা: ২০২৬"
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">লাইভ কাস্টমার ডেমো লিংক (ঐচ্ছিক)</label>
+                              <input
+                                type="text"
+                                value={editPortfolioItem.demoUrl || ""}
+                                onChange={(e) => setEditPortfolioItem({...editPortfolioItem, demoUrl: e.target.value})}
+                                placeholder="https://example.com"
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">ট্যাগসমূহ (কমা দিয়ে আলাদা করুন)</label>
+                              <input
+                                type="text"
+                                value={editPortfolioItem.tags ? editPortfolioItem.tags.join(', ') : ""}
+                                onChange={(e) => setEditPortfolioItem({
+                                  ...editPortfolioItem, 
+                                  tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+                                })}
+                                placeholder="উদা: React, Node.js, Tailwind, SSL"
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              <label className="block text-slate-400 text-[11px] font-bold mb-2">প্রজেক্ট বিবরণ (বাংলা)</label>
+                              <textarea
+                                rows={3}
+                                value={editPortfolioItem.description || ""}
+                                onChange={(e) => setEditPortfolioItem({...editPortfolioItem, description: e.target.value})}
+                                placeholder="প্রজেক্টের আকর্ষণীয় বিবরণ লিখুন..."
+                                className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none resize-none"
+                              />
+                            </div>
+
+                            <div className="sm:col-span-2 space-y-2">
+                              <ImageUploadField
+                                label="প্রজেক্ট থাম্বনেইল সরাসরি আপলোড"
+                                value={editPortfolioItem.imageUrl || ""}
+                                onChange={(val) => setEditPortfolioItem({...editPortfolioItem, imageUrl: val})}
+                                placeholder="ছবি সিলেক্ট করতে এখানে ক্লিক করুন"
+                              />
                               <div>
-                                <h4 className="text-xs font-bold text-slate-100">{p.title}</h4>
-                                <p className="text-[10px] text-purple-400">{p.category}</p>
+                                <label className="block text-slate-400 text-[10px] font-medium mb-1">অথবা ইন্টারনেট ছবির লিংক ইউআরএল (ঐচ্ছিক)</label>
+                                <input
+                                  type="text"
+                                  value={editPortfolioItem.imageUrl || ""}
+                                  onChange={(e) => setEditPortfolioItem({...editPortfolioItem, imageUrl: e.target.value})}
+                                  placeholder="https://images.unsplash.com/..."
+                                  className="w-full bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                                />
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0 ml-4">
-                              <button
-                                onClick={() => setEditPortfolioItem(p)}
-                                className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeletePortfolio(p.id)}
-                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
                           </div>
-                        ))}
+
+                          <div className="flex justify-end gap-2 pt-2 font-sans">
+                            <button
+                              onClick={() => setEditPortfolioItem(null)}
+                              className="bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl cursor-pointer"
+                            >
+                              বাতিল
+                            </button>
+                            <button
+                              onClick={handleSavePortfolio}
+                              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2 rounded-xl cursor-pointer"
+                            >
+                              সংরক্ষণ করুন
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans">
+                          {portfolio.map((p) => (
+                            <div key={p.id} className="bg-[#0e051d] border border-purple-500/10 p-4 rounded-2xl flex items-center justify-between">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <img src={p.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                                <div className="overflow-hidden">
+                                  <h4 className="text-xs font-bold text-slate-100 truncate">{p.title}</h4>
+                                  <p className="text-[10px] text-purple-400 truncate">{p.category}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                                <button
+                                  onClick={() => setEditPortfolioItem(p)}
+                                  className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePortfolio(p.id)}
+                                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      /* Category management sub-tab */
+                      <div className="space-y-6 max-w-4xl font-sans">
+                        <div className="border border-purple-500/10 bg-[#0e051d] p-5 rounded-2xl space-y-4">
+                          <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest">
+                            নতুন ক্যাটাগরি তৈরি করুন
+                          </h4>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <input
+                              type="text"
+                              placeholder="ক্যাটাগরির নাম লিখুন (উদা: প্রিমিয়াম ই-কমার্স)"
+                              value={newCatLabel}
+                              onChange={(e) => setNewCatLabel(e.target.value)}
+                              className="flex-1 bg-[#110724] border border-purple-500/10 text-slate-100 rounded-xl px-4 py-2.5 text-xs focus:outline-none"
+                            />
+                            <button
+                              onClick={() => {
+                                if (!newCatLabel.trim()) return;
+                                const cleanId = newCatLabel.trim();
+                                if (portfolioCategories.some(c => c.id === cleanId)) {
+                                  triggerSuccessAlert("এই ক্যাটাগরি ইতিমধ্যে বিদ্যমান রয়েছে!");
+                                  return;
+                                }
+                                const newCat: PortfolioCategory = {
+                                  id: cleanId,
+                                  label: newCatLabel.trim(),
+                                  active: true,
+                                  iconName: "Layers"
+                                };
+                                updatePortfolioCategories([...portfolioCategories, newCat]);
+                                setNewCatLabel("");
+                                triggerSuccessAlert("নতুন ক্যাটাগরি সফলভাবে যোগ হয়েছে!");
+                              }}
+                              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] px-5 py-2.5 rounded-xl cursor-pointer"
+                            >
+                              যোগ করুন
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400">বিদ্যমান ক্যাটাগরি তালিকা ({portfolioCategories.length})</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {portfolioCategories.map((cat) => {
+                              const isEditing = editingCatId === cat.id;
+                              return (
+                                <div 
+                                  key={cat.id} 
+                                  className={`p-4 rounded-xl border transition-all duration-200 ${
+                                    cat.active 
+                                      ? "bg-[#0e051d]/60 border-purple-500/10" 
+                                      : "bg-slate-950/40 border-slate-900 opacity-60"
+                                  }`}
+                                >
+                                  {isEditing ? (
+                                    <div className="space-y-3">
+                                      <div>
+                                        <label className="block text-slate-400 text-[9px] mb-1">ক্যাটাগরি কন্টেন্ট লেবেল</label>
+                                        <input
+                                          type="text"
+                                          value={editingCatLabel}
+                                          onChange={(e) => setEditingCatLabel(e.target.value)}
+                                          className="w-full bg-[#110724] border border-purple-500/20 text-slate-100 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-slate-400 text-[9px] mb-1">আইকন নাম (Lucide)</label>
+                                        <select
+                                          value={editingCatIcon}
+                                          onChange={(e) => setEditingCatIcon(e.target.value)}
+                                          className="w-full bg-[#110724] border border-purple-500/20 text-slate-100 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
+                                        >
+                                          <option value="Layers">Layers (ডিফল্ট)</option>
+                                          <option value="Smartphone">Smartphone</option>
+                                          <option value="Code2">Code2</option>
+                                          <option value="ShoppingCart">ShoppingCart</option>
+                                          <option value="Briefcase">Briefcase</option>
+                                          <option value="FileText font-sans">FileText</option>
+                                        </select>
+                                      </div>
+                                      <div className="flex gap-2 justify-end">
+                                        <button
+                                          onClick={() => setEditingCatId(null)}
+                                          className="text-[10px] bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-slate-300"
+                                        >
+                                          বাতিল
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (!editingCatLabel.trim()) return;
+                                            const updated = portfolioCategories.map(c => 
+                                              c.id === cat.id ? { ...c, label: editingCatLabel.trim(), iconName: editingCatIcon } : c
+                                            );
+                                            updatePortfolioCategories(updated);
+                                            setEditingCatId(null);
+                                            triggerSuccessAlert("ক্যাটাগরি সফলভাবে আপডেট করা হয়েছে!");
+                                          }}
+                                          className="text-[10px] bg-purple-600 px-3 py-1 rounded-lg text-white font-bold animate-pulse"
+                                        >
+                                          সংরক্ষণ
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                                          {cat.iconName === "Smartphone" && <Smartphone className="w-4 h-4" />}
+                                          {cat.iconName === "Code2" && <Code2 className="w-4 h-4" />}
+                                          {cat.iconName === "ShoppingCart" && <ShoppingCart className="w-4 h-4" />}
+                                          {cat.iconName === "Briefcase" && <Briefcase className="w-4 h-4" />}
+                                          {cat.iconName === "FileText" && <FileText className="w-4 h-4" />}
+                                          {cat.iconName !== "Smartphone" && cat.iconName !== "Code2" && cat.iconName !== "ShoppingCart" && cat.iconName !== "Briefcase" && cat.iconName !== "FileText" && <Layers className="w-4 h-4" />}
+                                        </div>
+                                        <div>
+                                          <span className="text-xs font-bold text-slate-200 block">{cat.label}</span>
+                                          <span className="text-[9px] text-slate-500 block truncate max-w-[150px]">আইডি: {cat.id}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        {/* Dynamic Toggle Button to Turn Category On/Off */}
+                                        <button
+                                          onClick={() => {
+                                            const updated = portfolioCategories.map(c => 
+                                              c.id === cat.id ? { ...c, active: !c.active } : c
+                                            );
+                                            updatePortfolioCategories(updated);
+                                            triggerSuccessAlert(cat.active ? "ক্যাটাগরি সাময়িকভাবে বন্ধ করা হয়েছে!" : "ক্যাটাগরি পুনরায় সক্রিয় করা হয়েছে!");
+                                          }}
+                                          className={`p-1.5 rounded-lg border transition-all ${
+                                            cat.active 
+                                              ? "bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20" 
+                                              : "bg-slate-900 border-slate-800 text-slate-500 hover:bg-slate-800"
+                                          }`}
+                                          title={cat.active ? "ক্যাটাগরি বন্ধ করুন" : "ক্যাটাগরি চালু করুন"}
+                                        >
+                                          {cat.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                        </button>
+
+                                        <button
+                                          onClick={() => {
+                                            setEditingCatId(cat.id);
+                                            setEditingCatLabel(cat.label);
+                                            setEditingCatIcon(cat.iconName || "Layers");
+                                          }}
+                                          className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5" />
+                                        </button>
+
+                                        <button
+                                          onClick={() => {
+                                            const updated = portfolioCategories.filter(c => c.id !== cat.id);
+                                            updatePortfolioCategories(updated);
+                                            triggerSuccessAlert("ক্যাটাগরি সফলভাবে ড্রপ করা হয়েছে!");
+                                          }}
+                                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
